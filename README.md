@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/uploads/readme.png" alt="Maison Workspace Banner" width="100%" style="border-radius:12px;" />
+<img src="frontend/public/readme.png" alt="Maison Workspace Banner" width="100%" style="border-radius:12px;" />
 
 <br /><br />
 
