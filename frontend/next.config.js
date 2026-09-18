@@ -8,6 +8,18 @@ const nextConfig = {
         port: "3001",
         pathname: "/uploads/**",
       },
+      // Supabase Storage — public bucket URLs
+      {
+        protocol: "https",
+        hostname: "dbeqjodlfutwexokuwcd.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      // ibb.co direct image links
+      {
+        protocol: "https",
+        hostname: "i.ibb.co",
+        pathname: "/**",
+      },
     ],
   },
   async rewrites() {

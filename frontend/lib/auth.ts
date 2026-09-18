@@ -120,3 +120,26 @@ export function getErrorMessage(error: any): string {
   }
   return error?.message || 'Terjadi kesalahan';
 }
+
+/**
+ * Resolve URL gambar dari field `foto` database.
+ *
+ * Dua kasus:
+ * 1. Foto lama (lokal): "/uploads/spaces/abc.jpg"
+ *    → prefix dengan NEXT_PUBLIC_API_URL  → http://localhost:3001/uploads/spaces/abc.jpg
+ *
+ * 2. Foto baru (Supabase Storage): "https://xxx.supabase.co/storage/v1/object/public/..."
+ *    → sudah full URL, langsung return as-is
+ *
+ * Jika foto null/undefined → return null agar komponen tampilkan fallback.
+ */
+export function getImageUrl(foto?: string | null): string | null {
+  if (!foto) return null;
+  // Sudah full URL (Supabase Storage atau eksternal)
+  if (foto.startsWith('http://') || foto.startsWith('https://')) {
+    return foto;
+  }
+  // Path relatif lokal — prefix dengan backend URL
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  return `${base}${foto}`;
+}

@@ -41,6 +41,7 @@ export class AdminService {
         ...(dto.telp && { telp: dto.telp }),
         ...(dto.alamat && { alamat: dto.alamat }),
         ...(dto.deskripsi !== undefined && { deskripsi: dto.deskripsi }),
+        ...(dto.foto !== undefined && { foto: dto.foto }),
       },
     });
   }

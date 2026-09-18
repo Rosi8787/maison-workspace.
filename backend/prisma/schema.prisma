@@ -81,6 +81,7 @@ model space_owner {
   telp           String
   alamat         String
   deskripsi      String?
+  foto           String?
   id_user        Int     @unique
 
   user      users       @relation(fields: [id_user], references: [id], onDelete: Cascade)

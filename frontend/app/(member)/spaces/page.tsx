@@ -1,37 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Calendar, Clock, Timer, Building2, Users, Search, X, ArrowRight,
+} from 'lucide-react';
 import { spacesApi } from '@/lib/api';
-import { Space, TipeSpace } from '@/types';
-import { formatCurrency, getTipeSpaceLabel, getErrorMessage } from '@/lib/auth';
+import { formatCurrency, getTipeSpaceLabel, getErrorMessage, getImageUrl } from '@/lib/auth';
+import { TIME_OPTIONS, DURATION_OPTIONS } from '@/lib/mock-data';
+import type { Space, TipeSpace } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import Alert from '@/components/ui/Alert';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import BookingSummary from '@/components/dashboard/BookingSummary';
 
-const TIPE_OPTIONS: { label: string; value: TipeSpace | '' }[] = [
-  { label: 'Semua Tipe', value: '' },
-  { label: 'Personal Desk', value: 'Personal_Desk' },
+const TYPE_FILTERS: { label: string; value: TipeSpace | '' }[] = [
+  { label: 'All Types',      value: '' },
+  { label: 'Personal Desk',  value: 'Personal_Desk' },
   { label: 'Private Office', value: 'Private_Office' },
-  { label: 'Meeting Room', value: 'Meeting_Room' },
+  { label: 'Meeting Room',   value: 'Meeting_Room' },
 ];
 
 export default function SpacesPage() {
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [filtered, setFiltered] = useState<Space[]>([]);
-  const [filterTipe, setFilterTipe] = useState<TipeSpace | ''>('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const today = new Date().toISOString().split('T')[0];
 
-  // Availability filter
-  const [tanggal, setTanggal] = useState('');
-  const [jamMulai, setJamMulai] = useState('');
-  const [durasi, setDurasi] = useState('');
-  const [availabilityMode, setAvailabilityMode] = useState(false);
+  const [spaces, setSpaces]           = useState<Space[]>([]);
+  const [filtered, setFiltered]       = useState<Space[]>([]);
+  const [filterTipe, setFilterTipe]   = useState<TipeSpace | ''>('');
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
+  const [availabilityMode, setAvMode] = useState(false);
+
+  // Filter form
+  const [tanggal, setTanggal]   = useState('');
+  const [jamMulai, setJamMulai] = useState('09:00');
+  const [durasi, setDurasi]     = useState(2);
+
+  useEffect(() => { loadSpaces(); }, []);
 
   useEffect(() => {
-    loadSpaces();
-  }, []);
+    setFiltered(filterTipe ? spaces.filter((s) => s.tipe === filterTipe) : spaces);
+  }, [filterTipe, spaces]);
 
   async function loadSpaces() {
     setLoading(true);
@@ -39,176 +48,299 @@ export default function SpacesPage() {
       const res = await spacesApi.getAll();
       setSpaces(res.data);
       setFiltered(res.data);
-    } catch (err: any) {
-      setError(getErrorMessage(err));
+    } catch (e: any) {
+      setError(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    let result = spaces;
-    if (filterTipe) {
-      result = result.filter((s) => s.tipe === filterTipe);
-    }
-    setFiltered(result);
-  }, [filterTipe, spaces]);
-
   async function handleCheckAvailability(e: React.FormEvent) {
     e.preventDefault();
-    if (!tanggal || !jamMulai || !durasi) return;
+    if (!tanggal) return;
     setLoading(true);
     try {
-      const res = await spacesApi.getAvailability(tanggal, jamMulai, parseInt(durasi));
+      const res = await spacesApi.getAvailability(tanggal, jamMulai, durasi);
       let data: Space[] = res.data;
       if (filterTipe) data = data.filter((s) => s.tipe === filterTipe);
+      setSpaces(res.data);
       setFiltered(data);
-      setAvailabilityMode(true);
-    } catch (err: any) {
-      setError(getErrorMessage(err));
+      setAvMode(true);
+    } catch (e: any) {
+      setError(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
   }
 
   function clearAvailability() {
-    setTanggal('');
-    setJamMulai('');
-    setDurasi('');
-    setAvailabilityMode(false);
-    setFiltered(spaces);
+    setTanggal(''); setJamMulai('09:00'); setDurasi(2);
+    setAvMode(false);
+    loadSpaces();
   }
-
-  const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Ruang Coworking</h1>
-        <p className="text-gray-500 mt-1">Temukan ruang yang sesuai kebutuhan Anda</p>
-      </div>
+      {/* Header */}
+      <DashboardHeader subtitle="Browse and book the perfect workspace for your day." />
 
-      {error && <div className="mb-4"><Alert type="error" message={error} onClose={() => setError('')} /></div>}
+      {/* Summary cards */}
+      <BookingSummary />
 
-      {/* Availability Checker */}
-      <div className="card mb-6">
-        <h2 className="font-semibold text-gray-800 mb-4">🔍 Cek Ketersediaan</h2>
-        <form onSubmit={handleCheckAvailability} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* ── Availability checker ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.1 }}
+        className="rounded-2xl p-5 mb-6"
+        style={{
+          background: 'rgba(34,26,20,0.80)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: '#f4eee7' }}>
+          <Search size={15} style={{ color: '#c9a77a' }} />
+          Check Availability
+        </h2>
+
+        <form onSubmit={handleCheckAvailability} className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <label className="label">Tanggal</label>
-            <input type="date" className="input" min={todayStr}
+            <label className="label flex items-center gap-1.5" htmlFor="sp-date">
+              <Calendar size={10} /> Date
+            </label>
+            <input id="sp-date" type="date" className="input" min={today}
               value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
           </div>
+
           <div>
-            <label className="label">Jam Mulai</label>
-            <input type="time" className="input"
-              value={jamMulai} onChange={(e) => setJamMulai(e.target.value)} />
+            <label className="label flex items-center gap-1.5" htmlFor="sp-time">
+              <Clock size={10} /> Start Time
+            </label>
+            <select id="sp-time" className="input appearance-none cursor-pointer"
+              value={jamMulai} onChange={(e) => setJamMulai(e.target.value)}>
+              {TIME_OPTIONS.map((t) => (
+                <option key={t} value={t} style={{ background: '#1c1410' }}>{t}</option>
+              ))}
+            </select>
           </div>
+
           <div>
-            <label className="label">Durasi (jam)</label>
-            <input type="number" className="input" min="1" max="24" placeholder="1"
-              value={durasi} onChange={(e) => setDurasi(e.target.value)} />
+            <label className="label flex items-center gap-1.5" htmlFor="sp-dur">
+              <Timer size={10} /> Duration
+            </label>
+            <select id="sp-dur" className="input appearance-none cursor-pointer"
+              value={durasi} onChange={(e) => setDurasi(Number(e.target.value))}>
+              {DURATION_OPTIONS.map((d) => (
+                <option key={d.value} value={d.value} style={{ background: '#1c1410' }}>{d.label}</option>
+              ))}
+            </select>
           </div>
+
           <div className="flex items-end gap-2">
-            <button type="submit" className="btn-primary flex-1">Cek</button>
+            <button type="submit" className="btn-primary flex-1" disabled={!tanggal || loading}>
+              Check
+            </button>
             {availabilityMode && (
-              <button type="button" onClick={clearAvailability} className="btn-secondary px-3">✕</button>
+              <button type="button" onClick={clearAvailability} className="btn-secondary px-3 py-2.5">
+                <X size={14} />
+              </button>
             )}
           </div>
         </form>
+
         {availabilityMode && (
-          <p className="text-xs text-blue-600 mt-2">
-            Menampilkan ketersediaan untuk {tanggal} jam {jamMulai} selama {durasi} jam
+          <p className="mt-3 text-xs" style={{ color: '#c9a77a' }}>
+            Showing availability for {tanggal} at {jamMulai}, {durasi}h
           </p>
         )}
-      </div>
 
-      {/* Filter Tipe */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {TIPE_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setFilterTipe(opt.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              filterTipe === opt.value
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:border-primary-400'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+        {error && (
+          <p className="mt-3 text-xs" style={{ color: '#f87171' }}>{error}</p>
+        )}
+      </motion.div>
 
-      {/* Grid */}
+      {/* ── Type filter pills ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15 }}
+        className="flex gap-2 mb-6 overflow-x-auto pb-1"
+        style={{ scrollbarWidth: 'none' }}
+        role="group"
+        aria-label="Filter by space type"
+      >
+        {TYPE_FILTERS.map((opt) => {
+          const isActive = filterTipe === opt.value;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setFilterTipe(opt.value)}
+              className="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200"
+              style={{
+                background: isActive ? '#c9a77a' : 'rgba(255,255,255,0.06)',
+                color:      isActive ? '#1a1008' : '#7a6a5a',
+                border:     isActive ? '1px solid #c9a77a' : '1px solid rgba(255,255,255,0.10)',
+                boxShadow:  isActive ? '0 2px 12px rgba(201,167,122,0.25)' : 'none',
+              }}
+              aria-pressed={isActive}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </motion.div>
+
+      {/* ── Grid ── */}
       {loading ? (
-        <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
+        <div className="flex justify-center py-20">
+          <LoadingSpinner size="lg" />
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">🏢</p>
-          <p className="text-lg font-medium">Tidak ada ruang tersedia</p>
-          <p className="text-sm mt-1">Coba ubah filter atau tanggal</p>
+        <div className="text-center py-20" style={{ color: '#7a6a5a' }}>
+          <Building2 size={40} className="mx-auto mb-3 opacity-25" />
+          <p className="text-base font-medium" style={{ color: '#b8a898' }}>No spaces available</p>
+          <p className="text-sm mt-1">Try adjusting your filters or date</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((space) => (
-            <SpaceCard key={space.id} space={space} availabilityMode={availabilityMode} />
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((space, i) => (
+              <SpaceCard key={space.id} space={space} index={i} availabilityMode={availabilityMode} />
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>
   );
 }
 
-function SpaceCard({ space, availabilityMode }: { space: Space; availabilityMode: boolean }) {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+/* ─────────────────────────── SpaceCard ─────────────────────────── */
+
+function SpaceCard({
+  space,
+  index,
+  availabilityMode,
+}: {
+  space: Space;
+  index: number;
+  availabilityMode: boolean;
+}) {
+  const unavailable = availabilityMode && space.tersedia === false;
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow ${
-      availabilityMode && space.tersedia === false ? 'opacity-60' : ''
-    }`}>
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: unavailable ? 0.45 : 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.4, delay: index * 0.04 }}
+      whileHover={unavailable ? undefined : {
+        y: -6,
+        rotate: -0.4,
+        transition: { duration: 0.2, ease: [0.34, 1.3, 0.64, 1] },
+      }}
+      className="group relative rounded-2xl overflow-hidden"
+      style={{
+        background: 'rgba(34,26,20,0.80)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
       {/* Image */}
-      <div className="relative h-44 bg-gray-100">
+      <div className="relative overflow-hidden" style={{ aspectRatio: '16/9' }}>
         {space.foto ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`${API_URL}${space.foto}`}
+            src={getImageUrl(space.foto) ?? ''}
             alt={space.nama_space}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+            loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl">🏢</div>
-        )}
-        {availabilityMode && (
-          <div className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-bold ${
-            space.tersedia ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-          }`}>
-            {space.tersedia ? 'Tersedia' : 'Penuh'}
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: 'rgba(38,26,14,0.9)' }}
+          >
+            <Building2 size={32} style={{ color: '#3d3028' }} />
           </div>
         )}
-        <span className="absolute top-3 left-3 bg-white text-primary-700 text-xs font-medium px-2 py-1 rounded-full shadow">
-          {getTipeSpaceLabel(space.tipe)}
-        </span>
-      </div>
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(180deg,transparent 40%,rgba(18,13,11,0.65) 100%)' }}
+        />
 
-      {/* Info */}
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 mb-1">{space.nama_space}</h3>
-        {space.deskripsi && (
-          <p className="text-xs text-gray-500 mb-3 line-clamp-2">{space.deskripsi}</p>
-        )}
-        <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-          <span>👥 {space.kapasitas} orang</span>
-          <span className="font-semibold text-primary-700">
-            {formatCurrency(space.harga_per_jam)}/jam
+        {/* Type badge */}
+        <div className="absolute top-3 left-3">
+          <span
+            className="px-2.5 py-1 rounded-full text-xs font-medium"
+            style={{
+              background: 'rgba(18,13,11,0.80)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#c9a77a',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            {getTipeSpaceLabel(space.tipe)}
           </span>
         </div>
+
+        {/* Availability badge */}
+        {availabilityMode && (
+          <div className="absolute top-3 right-3">
+            <span
+              className="px-2.5 py-1 rounded-full text-xs font-bold"
+              style={{
+                background: space.tersedia ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
+                border: `1px solid ${space.tersedia ? 'rgba(74,222,128,0.35)' : 'rgba(248,113,113,0.35)'}`,
+                color: space.tersedia ? '#4ade80' : '#f87171',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              {space.tersedia ? 'Available' : 'Full'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="p-5">
+        <h3 className="text-sm font-semibold mb-1.5" style={{ color: '#f4eee7' }}>
+          {space.nama_space}
+        </h3>
+        {space.deskripsi && (
+          <p className="text-xs mb-4 line-clamp-2 leading-relaxed" style={{ color: '#7a6a5a' }}>
+            {space.deskripsi}
+          </p>
+        )}
+        <div className="flex items-center justify-between mb-4">
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: '#7a6a5a' }}>
+            <Users size={12} />
+            {space.kapasitas} people
+          </span>
+          <span className="text-sm font-semibold" style={{ color: '#c9a77a' }}>
+            {formatCurrency(space.harga_per_jam)}/hr
+          </span>
+        </div>
+
         <Link
           href={`/spaces/${space.id}`}
-          className="btn-primary block text-center text-sm py-2"
+          className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-xs font-medium transition-all duration-200 group/btn"
+          style={{
+            background: 'rgba(201,167,122,0.10)',
+            border: '1px solid rgba(201,167,122,0.20)',
+            color: '#c9a77a',
+          }}
+          aria-label={`View details for ${space.nama_space}`}
         >
-          Lihat Detail
+          View Details
+          <ArrowRight size={12} className="transition-transform group-hover/btn:translate-x-0.5" />
         </Link>
       </div>
-    </div>
+
+      {/* Hover glow border */}
+      <div
+        className="absolute inset-0 rounded-2xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ boxShadow: '0 0 0 1px rgba(201,167,122,0.22)' }}
+      />
+    </motion.article>
   );
 }

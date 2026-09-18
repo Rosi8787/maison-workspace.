@@ -1,31 +1,51 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getUser, isLoggedIn } from '@/lib/auth';
+import Navbar from '@/components/landing/Navbar';
+import Hero from '@/components/landing/Hero';
+import WorkspaceGrid from '@/components/landing/WorkspaceGrid';
+import Footer from '@/components/landing/Footer';
 
 export default function HomePage() {
   const router = useRouter();
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn()) {
-      router.push('/login');
-      return;
-    }
-    const user = getUser();
-    if (user?.role === 'ADMIN') {
-      router.push('/admin/dashboard');
+    if (isLoggedIn()) {
+      const user = getUser();
+      if (user?.role === 'ADMIN') {
+        router.replace('/admin/dashboard');
+      } else {
+        router.replace('/spaces');
+      }
     } else {
-      router.push('/spaces');
+      setChecked(true);
     }
   }, [router]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-600">Memuat...</p>
+  // While checking auth, render nothing (avoids flash)
+  if (!checked) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: '#120d0b' }}
+      >
+        <div
+          className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
+          style={{ borderColor: 'rgba(201,167,122,0.5)', borderTopColor: 'transparent' }}
+        />
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <main>
+      <Navbar />
+      <Hero />
+      <WorkspaceGrid />
+      <Footer />
+    </main>
   );
 }

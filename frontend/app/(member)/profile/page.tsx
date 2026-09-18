@@ -1,133 +1,151 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { authApi, uploadApi } from '@/lib/api';
-import { getUser, setAuth, getErrorMessage } from '@/lib/auth';
-import { Member } from '@/types';
+import { motion } from 'framer-motion';
+import { UserCircle, Building2, Phone, MapPin } from 'lucide-react';
+import { authApi } from '@/lib/api';
+import { getUser, getErrorMessage } from '@/lib/auth';
+import type { Member } from '@/types';
 import Alert from '@/components/ui/Alert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
+
+const CARD   = 'rgba(34,26,20,0.80)';
+const BORDER = 'rgba(255,255,255,0.08)';
+
+/** Resolve foto path ke full URL — handles Supabase https URLs + legacy /uploads/ paths */
+function resolveUrl(path: string | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;            // Supabase public URL
+  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${path}`; // legacy local
+}
 
 export default function ProfilePage() {
-  const [member, setMember] = useState<Member | null>(null);
+  const [member, setMember]   = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [uploading, setUploading] = useState(false);
-
-  const [form, setForm] = useState({
-    nama_member: '',
-    instansi: '',
-    alamat: '',
-    telp: '',
-    foto: '',
-  });
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const [error, setError]     = useState('');
+  const user = getUser();
 
   useEffect(() => {
-    loadProfile();
+    async function load() {
+      try {
+        const res = await authApi.getProfile();
+        setMember(res.data.member as Member);
+      } catch (err: any) {
+        setError(getErrorMessage(err));
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
-  async function loadProfile() {
-    try {
-      const res = await authApi.getProfile();
-      const m = res.data.member as Member;
-      setMember(m);
-      setForm({
-        nama_member: m.nama_member || '',
-        instansi: m.instansi || '',
-        alamat: m.alamat || '',
-        telp: m.telp || '',
-        foto: m.foto || '',
-      });
-    } catch (err: any) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }
+  if (loading) return (
+    <div className="flex justify-center py-24"><LoadingSpinner size="lg" /></div>
+  );
 
-  async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const res = await uploadApi.uploadMember(file);
-      setForm({ ...form, foto: res.data.path });
-    } catch (err: any) {
-      setError(getErrorMessage(err));
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  // Profile update tidak ada endpoint PUT /api/members/me, gunakan PUT admin/members/:id
-  // Untuk member, tampilkan data profil saja karena update profile member dilakukan via admin
-  // Atau jika ada endpoint khusus, gunakan itu
-  // Sesuai requirement: M1 = register, tidak ada explicit update profile untuk member di API reference
-  // Tampilkan profil saja dengan opsi minta admin untuk update
-
-  if (loading) return <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>;
+  const avatarUrl = resolveUrl(member?.foto);
+  const initials  = (member?.nama_member || user?.username || 'U')
+    .split(' ').slice(0, 2).map((w: string) => w[0]?.toUpperCase()).join('');
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">👤 Profil Saya</h1>
+      <DashboardHeader subtitle="Your account information." />
 
-      {error && <div className="mb-4"><Alert type="error" message={error} onClose={() => setError('')} /></div>}
-      {success && <div className="mb-4"><Alert type="success" message={success} /></div>}
+      {error && (
+        <div className="mb-5">
+          <Alert type="error" message={error} onClose={() => setError('')} />
+        </div>
+      )}
 
-      <div className="card">
-        {/* Avatar */}
-        <div className="flex items-center gap-6 mb-6 pb-6 border-b">
-          <div className="relative">
-            {form.foto ? (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="rounded-2xl overflow-hidden"
+        style={{ background: CARD, border: `1px solid ${BORDER}` }}
+      >
+        {/* ── Avatar ── */}
+        <div className="px-6 py-6 flex items-center gap-5" style={{ borderBottom: `1px solid ${BORDER}` }}>
+          <div className="flex-shrink-0">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`${API_URL}${form.foto}`}
-                alt="Foto profil"
-                className="w-20 h-20 rounded-full object-cover border-2 border-primary-200"
+                src={avatarUrl}
+                alt={member?.nama_member ?? 'Profile photo'}
+                className="w-20 h-20 rounded-2xl object-cover"
+                style={{ border: '2px solid rgba(201,167,122,0.30)' }}
+                onError={(e) => {
+                  // Fallback jika URL gambar broken
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-primary-100 flex items-center justify-center text-3xl">
-                👤
+              <div
+                className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-semibold"
+                style={{
+                  background: 'rgba(201,167,122,0.12)',
+                  border: '2px solid rgba(201,167,122,0.25)',
+                  color: '#c9a77a',
+                }}
+              >
+                {initials}
               </div>
             )}
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{member?.nama_member}</h2>
-            <p className="text-sm text-gray-500">{member?.instansi}</p>
-            <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+
+          <div className="min-w-0">
+            <h2
+              className="text-lg font-semibold tracking-tight"
+              style={{ color: '#f4eee7', letterSpacing: '-0.015em' }}
+            >
+              {member?.nama_member}
+            </h2>
+            <p className="text-sm mt-0.5" style={{ color: '#7a6a5a' }}>
+              @{user?.username}
+            </p>
+            <span
+              className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium"
+              style={{
+                background: 'rgba(96,165,250,0.10)',
+                border: '1px solid rgba(96,165,250,0.25)',
+                color: '#60a5fa',
+              }}
+            >
               Member
             </span>
           </div>
         </div>
 
-        {/* Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Nama Lengkap</p>
-            <p className="font-medium">{member?.nama_member}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Instansi</p>
-            <p className="font-medium">{member?.instansi}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">No. Telepon</p>
-            <p className="font-medium">{member?.telp}</p>
-          </div>
-          <div className="md:col-span-2">
-            <p className="text-xs text-gray-500 mb-1">Alamat</p>
-            <p className="font-medium">{member?.alamat}</p>
-          </div>
+        {/* ── Info fields ── */}
+        <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {[
+            { Icon: UserCircle, label: 'Full Name',   value: member?.nama_member },
+            { Icon: Building2,  label: 'Institution', value: member?.instansi },
+            { Icon: Phone,      label: 'Phone',       value: member?.telp },
+            { Icon: MapPin,     label: 'Address',     value: member?.alamat, full: true },
+          ].map(({ Icon, label, value, full }) => (
+            <div key={label} className={full ? 'sm:col-span-2' : ''}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Icon size={13} style={{ color: '#c9a77a' }} />
+                <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#7a6a5a' }}>
+                  {label}
+                </p>
+              </div>
+              <p className="text-sm font-medium pl-5" style={{ color: '#f4eee7' }}>
+                {value || '—'}
+              </p>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-6 pt-4 border-t">
-          <p className="text-xs text-gray-400">
-            Untuk mengubah data profil, hubungi admin coworking space Anda.
+        {/* ── Note ── */}
+        <div className="px-6 py-4" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <p className="text-xs" style={{ color: '#7a6a5a' }}>
+            To update your profile information, please contact your coworking space administrator.
           </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

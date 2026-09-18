@@ -1,0 +1,653 @@
+{
+  "info": {
+    "name": "UKK Smart Coworking Space",
+    "description": "Koleksi lengkap 43 endpoint API untuk sistem reservasi coworking space.\n\nCara pakai:\n1. Import file ini ke Postman\n2. Set variable `base_url` = http://localhost:3001\n3. Jalankan Login dulu, token otomatis tersimpan ke variable {{token}}\n4. Semua request yang butuh auth sudah pakai {{token}} di Authorization header",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3001", "type": "string" },
+    { "key": "token", "value": "paste_jwt_token_disini", "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Register Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/register/member", "host": ["{{base_url}}"], "path": ["api","auth","register","member"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_member\": \"Budi Santoso\",\n  \"instansi\": \"Universitas Teknologi\",\n  \"alamat\": \"Jl. Merdeka No. 10, Jakarta\",\n  \"telp\": \"081234567890\",\n  \"username\": \"budi_santoso\",\n  \"password\": \"password123\",\n  \"foto\": \"/uploads/members/foto.jpg\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Register Admin Space",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/register/admin-space", "host": ["{{base_url}}"], "path": ["api","auth","register","admin-space"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_coworking\": \"CoSpace Jakarta\",\n  \"nama_pemilik\": \"Ahmad Fauzi\",\n  \"telp\": \"082112345678\",\n  \"alamat\": \"Jl. Sudirman No. 50, Jakarta Pusat\",\n  \"deskripsi\": \"Coworking space modern di pusat kota dengan fasilitas lengkap\",\n  \"username\": \"admin_cospace\",\n  \"password\": \"admin123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.access_token) {",
+                  "  pm.collectionVariables.set('token', res.access_token);",
+                  "  console.log('Token tersimpan otomatis ke variable {{token}}');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"budi_santoso\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Get Profile (JWT)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/auth/profile", "host": ["{{base_url}}"], "path": ["api","auth","profile"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🏢 Spaces (Public)",
+      "item": [
+        {
+          "name": "List Semua Space",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/spaces", "host": ["{{base_url}}"], "path": ["api","spaces"] }
+          }
+        },
+        {
+          "name": "Detail Space by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/spaces/1", "host": ["{{base_url}}"], "path": ["api","spaces","1"] }
+          }
+        },
+        {
+          "name": "List Tipe Space",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/spaces/types", "host": ["{{base_url}}"], "path": ["api","spaces","types"] }
+          }
+        },
+        {
+          "name": "Cek Ketersediaan Space",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/spaces/availability?tanggal=2026-09-20&jam_mulai=09:00&durasi=3",
+              "host": ["{{base_url}}"],
+              "path": ["api","spaces","availability"],
+              "query": [
+                { "key": "tanggal", "value": "2026-09-20" },
+                { "key": "jam_mulai", "value": "09:00" },
+                { "key": "durasi", "value": "3" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🎟️ Diskon (Public)",
+      "item": [
+        {
+          "name": "List Diskon Aktif",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/diskon/active", "host": ["{{base_url}}"], "path": ["api","diskon","active"] }
+          }
+        },
+        {
+          "name": "Cek Kode Diskon",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/diskon/check", "host": ["{{base_url}}"], "path": ["api","diskon","check"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kode_diskon\": \"PROMO20\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Detail Diskon by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/diskon/1", "host": ["{{base_url}}"], "path": ["api","diskon","1"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📅 Reservasi (Member - JWT)",
+      "item": [
+        {
+          "name": "Buat Reservasi (dengan diskon)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/reservasi", "host": ["{{base_url}}"], "path": ["api","reservasi"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_space\": 1,\n  \"tanggal_reservasi\": \"2026-09-20\",\n  \"jam_mulai\": \"09:00\",\n  \"durasi_jam\": 3,\n  \"kode_diskon\": \"PROMO20\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Buat Reservasi (tanpa diskon)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/reservasi", "host": ["{{base_url}}"], "path": ["api","reservasi"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_space\": 2,\n  \"tanggal_reservasi\": \"2026-09-21\",\n  \"jam_mulai\": \"13:00\",\n  \"durasi_jam\": 2\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Reservasi Aktif Saya",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/reservasi/my", "host": ["{{base_url}}"], "path": ["api","reservasi","my"] }
+          }
+        },
+        {
+          "name": "Riwayat Reservasi (semua)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/reservasi/my/history", "host": ["{{base_url}}"], "path": ["api","reservasi","my","history"] }
+          }
+        },
+        {
+          "name": "Riwayat Reservasi (filter bulan)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/reservasi/my/history?bulan=2026-09",
+              "host": ["{{base_url}}"],
+              "path": ["api","reservasi","my","history"],
+              "query": [{ "key": "bulan", "value": "2026-09" }]
+            }
+          }
+        },
+        {
+          "name": "Detail Reservasi by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/reservasi/1", "host": ["{{base_url}}"], "path": ["api","reservasi","1"] }
+          }
+        },
+        {
+          "name": "E-Ticket Reservasi",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/reservasi/1/e-ticket", "host": ["{{base_url}}"], "path": ["api","reservasi","1","e-ticket"] }
+          }
+        },
+        {
+          "name": "Batalkan Reservasi",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/reservasi/1/cancel", "host": ["{{base_url}}"], "path": ["api","reservasi","1","cancel"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📤 Upload (JWT)",
+      "item": [
+        {
+          "name": "Upload Gambar General",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/upload/image", "host": ["{{base_url}}"], "path": ["api","upload","image"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "", "description": "Pilih file gambar (jpg/png/webp, max 5MB)" }]
+            }
+          }
+        },
+        {
+          "name": "Upload Foto Space",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/upload/spaces", "host": ["{{base_url}}"], "path": ["api","upload","spaces"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "", "description": "Pilih foto space (jpg/png/webp, max 5MB)" }]
+            }
+          }
+        },
+        {
+          "name": "Upload Foto Member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/upload/members", "host": ["{{base_url}}"], "path": ["api","upload","members"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": "", "description": "Pilih foto member (jpg/png/webp, max 5MB)" }]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "👨‍💼 Admin - Profile (JWT + ADMIN)",
+      "item": [
+        {
+          "name": "Get Profile Admin",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/profile", "host": ["{{base_url}}"], "path": ["api","admin","profile"] }
+          }
+        },
+        {
+          "name": "Update Profile Admin",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/profile", "host": ["{{base_url}}"], "path": ["api","admin","profile"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_coworking\": \"CoSpace Jakarta Premium\",\n  \"nama_pemilik\": \"Ahmad Fauzi\",\n  \"telp\": \"082112345678\",\n  \"alamat\": \"Jl. Sudirman No. 50, Jakarta Pusat\",\n  \"deskripsi\": \"Coworking space terbaik di Jakarta dengan fasilitas premium dan akses 24 jam\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "👥 Admin - Members (JWT + ADMIN)",
+      "item": [
+        {
+          "name": "List Semua Member",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/members", "host": ["{{base_url}}"], "path": ["api","admin","members"] }
+          }
+        },
+        {
+          "name": "Tambah Member Baru",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/members", "host": ["{{base_url}}"], "path": ["api","admin","members"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_member\": \"Siti Rahayu\",\n  \"instansi\": \"PT Maju Bersama\",\n  \"alamat\": \"Jl. Gatot Subroto No. 25, Jakarta Selatan\",\n  \"telp\": \"087765432100\",\n  \"username\": \"siti_rahayu\",\n  \"password\": \"member123\",\n  \"foto\": \"/uploads/members/siti.jpg\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Detail Member by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/members/1", "host": ["{{base_url}}"], "path": ["api","admin","members","1"] }
+          }
+        },
+        {
+          "name": "Update Member",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/members/1", "host": ["{{base_url}}"], "path": ["api","admin","members","1"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_member\": \"Siti Rahayu Updated\",\n  \"instansi\": \"PT Maju Bersama Tbk\",\n  \"alamat\": \"Jl. Gatot Subroto No. 99, Jakarta Selatan\",\n  \"telp\": \"087765432199\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Hapus Member",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/members/1", "host": ["{{base_url}}"], "path": ["api","admin","members","1"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🏠 Admin - Spaces (JWT + ADMIN)",
+      "item": [
+        {
+          "name": "List Spaces Milik Admin",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/spaces", "host": ["{{base_url}}"], "path": ["api","admin","spaces"] }
+          }
+        },
+        {
+          "name": "Tambah Space (Personal Desk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/spaces", "host": ["{{base_url}}"], "path": ["api","admin","spaces"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_space\": \"Desk A1\",\n  \"tipe\": \"Personal_Desk\",\n  \"kapasitas\": 1,\n  \"harga_per_jam\": 15000,\n  \"deskripsi\": \"Meja kerja personal dengan kursi ergonomis, colokan, dan akses WiFi\",\n  \"foto\": \"/uploads/spaces/desk-a1.jpg\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Tambah Space (Private Office)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/spaces", "host": ["{{base_url}}"], "path": ["api","admin","spaces"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_space\": \"Private Office 01\",\n  \"tipe\": \"Private_Office\",\n  \"kapasitas\": 4,\n  \"harga_per_jam\": 75000,\n  \"deskripsi\": \"Ruangan privat untuk tim kecil, AC, whiteboard, dan proyektor\",\n  \"foto\": \"/uploads/spaces/office-01.jpg\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Tambah Space (Meeting Room)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/spaces", "host": ["{{base_url}}"], "path": ["api","admin","spaces"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_space\": \"Meeting Room Lantai 2\",\n  \"tipe\": \"Meeting_Room\",\n  \"kapasitas\": 10,\n  \"harga_per_jam\": 150000,\n  \"deskripsi\": \"Ruang rapat kapasitas 10 orang, layar besar, sound system\",\n  \"foto\": \"/uploads/spaces/meeting-lt2.jpg\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Detail Space by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/spaces/1", "host": ["{{base_url}}"], "path": ["api","admin","spaces","1"] }
+          }
+        },
+        {
+          "name": "Update Space",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/spaces/1", "host": ["{{base_url}}"], "path": ["api","admin","spaces","1"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_space\": \"Desk A1 Premium\",\n  \"harga_per_jam\": 20000,\n  \"deskripsi\": \"Meja kerja premium dengan monitor eksternal dan akses WiFi 100Mbps\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Hapus Space",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/spaces/1", "host": ["{{base_url}}"], "path": ["api","admin","spaces","1"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🏷️ Admin - Diskon (JWT + ADMIN)",
+      "item": [
+        {
+          "name": "List Semua Diskon",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/diskon", "host": ["{{base_url}}"], "path": ["api","admin","diskon"] }
+          }
+        },
+        {
+          "name": "Tambah Diskon Baru",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/diskon", "host": ["{{base_url}}"], "path": ["api","admin","diskon"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_diskon\": \"Promo September 2026\",\n  \"kode_diskon\": \"PROMO20\",\n  \"persentase_diskon\": 20,\n  \"tanggal_awal\": \"2026-09-01\",\n  \"tanggal_akhir\": \"2026-09-30\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Detail Diskon by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/diskon/1", "host": ["{{base_url}}"], "path": ["api","admin","diskon","1"] }
+          }
+        },
+        {
+          "name": "Update Diskon",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/diskon/1", "host": ["{{base_url}}"], "path": ["api","admin","diskon","1"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_diskon\": \"Promo September Extended\",\n  \"persentase_diskon\": 25,\n  \"tanggal_akhir\": \"2026-10-15\"\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Hapus Diskon",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/diskon/1", "host": ["{{base_url}}"], "path": ["api","admin","diskon","1"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📋 Admin - Reservasi (JWT + ADMIN)",
+      "item": [
+        {
+          "name": "List Semua Reservasi",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/reservasi", "host": ["{{base_url}}"], "path": ["api","admin","reservasi"] }
+          }
+        },
+        {
+          "name": "List Reservasi (filter status)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reservasi?status=belum_dikonfirm",
+              "host": ["{{base_url}}"],
+              "path": ["api","admin","reservasi"],
+              "query": [{ "key": "status", "value": "belum_dikonfirm", "description": "Nilai valid: belum_dikonfirm | disetujui | aktif | selesai | dibatalkan" }]
+            }
+          }
+        },
+        {
+          "name": "List Reservasi (filter bulan)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reservasi?bulan=2026-09",
+              "host": ["{{base_url}}"],
+              "path": ["api","admin","reservasi"],
+              "query": [{ "key": "bulan", "value": "2026-09", "description": "Format: YYYY-MM" }]
+            }
+          }
+        },
+        {
+          "name": "Update Status Reservasi",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": { "raw": "{{base_url}}/api/admin/reservasi/1/status", "host": ["{{base_url}}"], "path": ["api","admin","reservasi","1","status"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"disetujui\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Nilai status valid:\n- belum_dikonfirm\n- disetujui\n- aktif\n- selesai\n- dibatalkan"
+          }
+        },
+        {
+          "name": "Check-In Reservasi",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/reservasi/1/check-in", "host": ["{{base_url}}"], "path": ["api","admin","reservasi","1","check-in"] }
+          }
+        },
+        {
+          "name": "Check-Out Reservasi",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/admin/reservasi/1/check-out", "host": ["{{base_url}}"], "path": ["api","admin","reservasi","1","check-out"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📊 Admin - Reports (JWT + ADMIN)",
+      "item": [
+        {
+          "name": "Laporan Bulanan",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reports/monthly?bulan=9&tahun=2026",
+              "host": ["{{base_url}}"],
+              "path": ["api","admin","reports","monthly"],
+              "query": [
+                { "key": "bulan", "value": "9", "description": "Nomor bulan: 1-12" },
+                { "key": "tahun", "value": "2026", "description": "Format: YYYY" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Laporan Pendapatan Tahunan",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reports/income?tahun=2026",
+              "host": ["{{base_url}}"],
+              "path": ["api","admin","reports","income"],
+              "query": [{ "key": "tahun", "value": "2026", "description": "Format: YYYY" }]
+            }
+          }
+        }
+      ]
+    }
+
+  ]
+}

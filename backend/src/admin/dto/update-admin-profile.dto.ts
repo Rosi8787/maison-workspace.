@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsUrl } from 'class-validator';
 
 export class UpdateAdminProfileDto {
   @IsOptional()
@@ -20,4 +20,8 @@ export class UpdateAdminProfileDto {
   @IsOptional()
   @IsString()
   deskripsi?: string;
+
+  @IsOptional()
+  @IsString()
+  foto?: string;
 }

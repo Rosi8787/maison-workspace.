@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Plus, Tag, Pencil, Trash2 } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Diskon } from '@/types';
 import { formatDate, getErrorMessage } from '@/lib/auth';
@@ -9,16 +11,23 @@ import Alert from '@/components/ui/Alert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Modal from '@/components/ui/Modal';
 
-export default function AdminDiskonPage() {
-  const [diskons, setDiskons] = useState<Diskon[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+const CARD   = 'rgba(34,26,20,0.80)';
+const BORDER = 'rgba(255,255,255,0.08)';
 
+function isActive(d: Diskon) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(d.tanggal_awal) <= today && new Date(d.tanggal_akhir) >= today;
+}
+
+export default function AdminDiskonPage() {
+  const [diskons, setDiskons]           = useState<Diskon[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [success, setSuccess]           = useState('');
+  const [showModal, setShowModal]       = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+  const [creating, setCreating]         = useState(false);
+  const [deleting, setDeleting]         = useState(false);
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
@@ -32,30 +41,21 @@ export default function AdminDiskonPage() {
     try {
       const res = await adminApi.getDiskon();
       setDiskons(res.data);
-    } catch (err: any) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
+    } catch (err: any) { setError(getErrorMessage(err)); }
+    finally { setLoading(false); }
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
     try {
-      await adminApi.createDiskon({
-        ...form,
-        persentase_diskon: parseFloat(form.persentase_diskon),
-      });
-      setSuccess('Diskon berhasil ditambahkan');
+      await adminApi.createDiskon({ ...form, persentase_diskon: parseFloat(form.persentase_diskon) });
+      setSuccess('Discount added');
       setShowModal(false);
       setForm({ nama_diskon: '', kode_diskon: '', persentase_diskon: '', tanggal_awal: todayStr, tanggal_akhir: '' });
       loadDiskons();
-    } catch (err: any) {
-      setError(getErrorMessage(err));
-    } finally {
-      setCreating(false);
-    }
+    } catch (err: any) { setError(getErrorMessage(err)); }
+    finally { setCreating(false); }
   }
 
   async function handleDelete() {
@@ -63,128 +63,150 @@ export default function AdminDiskonPage() {
     setDeleting(true);
     try {
       await adminApi.deleteDiskon(deleteTarget);
-      setSuccess('Diskon berhasil dihapus');
+      setSuccess('Discount deleted');
       setDeleteTarget(null);
       loadDiskons();
-    } catch (err: any) {
-      setError(getErrorMessage(err));
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  function isActive(d: Diskon) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return new Date(d.tanggal_awal) <= today && new Date(d.tanggal_akhir) >= today;
+    } catch (err: any) { setError(getErrorMessage(err)); }
+    finally { setDeleting(false); }
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">🏷️ Kelola Diskon</h1>
-        <button onClick={() => setShowModal(true)} className="btn-primary">+ Tambah Diskon</button>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight" style={{ color: '#f4eee7', letterSpacing: '-0.02em' }}>Discounts</h1>
+          <p className="text-sm mt-1" style={{ color: '#7a6a5a' }}>Manage promo codes and discount rates</p>
+        </div>
+        <button onClick={() => setShowModal(true)} className="btn-primary"><Plus size={15} /> Add Discount</button>
       </div>
 
-      {error && <div className="mb-4"><Alert type="error" message={error} onClose={() => setError('')} /></div>}
-      {success && <div className="mb-4"><Alert type="success" message={success} onClose={() => setSuccess('')} /></div>}
+      {error   && <div className="mb-5"><Alert type="error"   message={error}   onClose={() => setError('')}   /></div>}
+      {success && <div className="mb-5"><Alert type="success" message={success} onClose={() => setSuccess('')} /></div>}
 
       {loading ? (
-        <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
+        <div className="flex justify-center py-20"><LoadingSpinner size="lg" /></div>
       ) : (
-        <div className="card overflow-hidden p-0">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-700">Nama</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-700">Kode</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-700">Diskon</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-700">Periode</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-700">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-700">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {diskons.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Tidak ada diskon</td></tr>
-              ) : diskons.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{d.nama_diskon}</td>
-                  <td className="px-4 py-3"><code className="bg-gray-100 px-2 py-0.5 rounded text-xs">{d.kode_diskon}</code></td>
-                  <td className="px-4 py-3 font-bold text-green-600">{d.persentase_diskon}%</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {formatDate(d.tanggal_awal)} – {formatDate(d.tanggal_akhir)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`badge ${isActive(d) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {isActive(d) ? 'Aktif' : 'Tidak Aktif'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <Link href={`/admin/diskon/${d.id}`} className="text-primary-600 hover:underline text-xs font-medium">Edit</Link>
-                      <button onClick={() => setDeleteTarget(d.id)} className="text-red-600 hover:underline text-xs font-medium">Hapus</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="rounded-2xl overflow-hidden" style={{ background: CARD, border: `1px solid ${BORDER}` }}>
+          {/* Head */}
+          <div
+            className="grid grid-cols-6 px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+            style={{ borderBottom: `1px solid ${BORDER}`, color: '#7a6a5a' }}
+          >
+            <span className="col-span-2">Name</span>
+            <span>Code</span>
+            <span>Discount</span>
+            <span>Period</span>
+            <span>Actions</span>
+          </div>
+
+          {diskons.length === 0 ? (
+            <div className="text-center py-12" style={{ color: '#7a6a5a' }}>
+              <Tag size={32} className="mx-auto mb-2 opacity-25" />
+              No discounts yet
+            </div>
+          ) : diskons.map((d, i) => {
+            const active = isActive(d);
+            return (
+              <motion.div
+                key={d.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.04 }}
+                className="grid grid-cols-6 items-center px-5 py-3.5 text-sm"
+                style={{ borderBottom: i < diskons.length - 1 ? `1px solid rgba(255,255,255,0.05)` : 'none' }}
+              >
+                <span className="col-span-2 font-medium" style={{ color: '#f4eee7' }}>{d.nama_diskon}</span>
+                <span>
+                  <code
+                    className="px-2 py-0.5 rounded-lg text-xs font-mono"
+                    style={{ background: 'rgba(201,167,122,0.12)', color: '#c9a77a' }}
+                  >
+                    {d.kode_diskon}
+                  </code>
+                </span>
+                <span className="font-bold" style={{ color: '#4ade80' }}>{d.persentase_diskon}%</span>
+                <span className="text-xs" style={{ color: '#7a6a5a' }}>
+                  {formatDate(d.tanggal_awal)}<br />{formatDate(d.tanggal_akhir)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="px-2 py-0.5 rounded-full text-xs font-medium mr-1"
+                    style={{
+                      background: active ? 'rgba(74,222,128,0.10)' : 'rgba(148,163,184,0.10)',
+                      border: `1px solid ${active ? 'rgba(74,222,128,0.25)' : 'rgba(148,163,184,0.20)'}`,
+                      color: active ? '#4ade80' : '#94a3b8',
+                    }}
+                  >
+                    {active ? 'Active' : 'Inactive'}
+                  </span>
+                  <Link
+                    href={`/admin/diskon/${d.id}`}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: '#b8a898' }}
+                  >
+                    <Pencil size={10} /> Edit
+                  </Link>
+                  <button
+                    onClick={() => setDeleteTarget(d.id)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171' }}
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
       {/* Create Modal */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Tambah Diskon Baru">
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Add New Discount">
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
-            <label className="label">Nama Diskon *</label>
-            <input className="input" value={form.nama_diskon}
-              onChange={(e) => setForm({ ...form, nama_diskon: e.target.value })} required />
+            <label className="label">Discount Name *</label>
+            <input className="input" value={form.nama_diskon} onChange={(e) => setForm({ ...form, nama_diskon: e.target.value })} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Kode Diskon *</label>
-              <input className="input uppercase" value={form.kode_diskon}
-                onChange={(e) => setForm({ ...form, kode_diskon: e.target.value.toUpperCase() })} required />
+              <label className="label">Discount Code *</label>
+              <input className="input uppercase" value={form.kode_diskon} onChange={(e) => setForm({ ...form, kode_diskon: e.target.value.toUpperCase() })} required />
             </div>
             <div>
-              <label className="label">Persentase (%) *</label>
-              <input type="number" className="input" min="1" max="100" value={form.persentase_diskon}
-                onChange={(e) => setForm({ ...form, persentase_diskon: e.target.value })} required />
+              <label className="label">Percentage (%) *</label>
+              <input type="number" className="input" min="1" max="100" value={form.persentase_diskon} onChange={(e) => setForm({ ...form, persentase_diskon: e.target.value })} required />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Tanggal Awal *</label>
-              <input type="date" className="input" value={form.tanggal_awal}
-                onChange={(e) => setForm({ ...form, tanggal_awal: e.target.value })} required />
+              <label className="label">Start Date *</label>
+              <input type="date" className="input" value={form.tanggal_awal} onChange={(e) => setForm({ ...form, tanggal_awal: e.target.value })} required />
             </div>
             <div>
-              <label className="label">Tanggal Akhir *</label>
-              <input type="date" className="input" value={form.tanggal_akhir} min={form.tanggal_awal}
-                onChange={(e) => setForm({ ...form, tanggal_akhir: e.target.value })} required />
+              <label className="label">End Date *</label>
+              <input type="date" className="input" value={form.tanggal_akhir} min={form.tanggal_awal} onChange={(e) => setForm({ ...form, tanggal_akhir: e.target.value })} required />
             </div>
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Batal</button>
-            <button type="submit" disabled={creating} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              {creating && <LoadingSpinner size="sm" />} Tambah
+            <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={creating} className="btn-primary flex-1">
+              {creating && <LoadingSpinner size="sm" />} Add Discount
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Delete Confirm */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Konfirmasi Hapus"
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Discount"
         footer={
           <div className="flex gap-3">
-            <button onClick={() => setDeleteTarget(null)} className="btn-secondary flex-1">Batal</button>
-            <button onClick={handleDelete} disabled={deleting} className="btn-danger flex-1 flex items-center justify-center gap-2">
-              {deleting && <LoadingSpinner size="sm" />} Hapus
+            <button onClick={() => setDeleteTarget(null)} className="btn-secondary flex-1">Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} className="btn-danger flex-1">
+              {deleting && <LoadingSpinner size="sm" />} Delete
             </button>
           </div>
-        }>
-        <p>Yakin ingin menghapus diskon ini?</p>
+        }
+      >
+        <p style={{ color: '#b8a898' }}>Are you sure you want to delete this discount?</p>
       </Modal>
     </div>
   );
