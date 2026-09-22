@@ -7,27 +7,21 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn()) { router.push('/login'); return; }
-    if (!isAdmin())    { router.push('/spaces'); return; }
-    setReady(true);
-  }, [router]);
+    if (!isLoggedIn()) { router.replace('/login'); return; }
+    if (!isAdmin())    { router.replace('/spaces'); return; }
+    setAuthReady(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#120d0b' }}>
-        <div
-          className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: 'rgba(201,167,122,0.4)', borderTopColor: 'transparent' }}
-        />
-      </div>
-    );
-  }
-
+  // Render konten langsung (LCP lebih cepat) dengan opacity transition
+  // Redirect tetap terjadi jika tidak auth, tapi browser sudah paint awal
   return (
-    <div className="flex min-h-screen" style={{ background: '#120d0b' }}>
+    <div
+      className="flex min-h-screen"
+      style={{ background: '#120d0b', opacity: authReady ? 1 : 0, transition: 'opacity 0.15s ease' }}
+    >
       <AdminSidebar />
       <main className="flex-1 ml-64 min-h-screen" style={{ background: '#120d0b' }}>
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">

@@ -53,12 +53,12 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
           >
-            <span
+            {/* <span
               className="inline-block text-xs font-semibold tracking-[0.25em] uppercase mb-6 px-3 py-1.5 rounded-full glass-sm"
               style={{ color: '#c9a77a' }}
             >
               Premium Coworking Space
-            </span>
+            </span> */}
           </motion.div>
 
           <motion.h1

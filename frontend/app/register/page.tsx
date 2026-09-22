@@ -18,8 +18,10 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fotoPath, setFotoPath]         = useState('');        // foto member
+  const [adminFotoPath, setAdminFotoPath] = useState('');      // foto admin (opsional)
   const [fotoUploading, setFotoUploading] = useState(false);
-  const [fotoPath, setFotoPath] = useState('');
+  const [adminFotoUploading, setAdminFotoUploading] = useState(false);
 
   const [member, setMember] = useState({
     nama_member: '', instansi: '', alamat: '', telp: '', username: '', password: '',
@@ -36,11 +38,25 @@ export default function RegisterPage() {
     setFotoUploading(true);
     try {
       const res = await uploadApi.uploadMember(file);
-      setFotoPath(res.data.path);
+      setFotoPath(res.data.url || res.data.path);
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {
       setFotoUploading(false);
+    }
+  };
+
+  const handleAdminFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAdminFotoUploading(true);
+    try {
+      const res = await uploadApi.uploadGeneral(file);
+      setAdminFotoPath(res.data.url || res.data.path);
+    } catch (err: any) {
+      setError(getErrorMessage(err));
+    } finally {
+      setAdminFotoUploading(false);
     }
   };
 
@@ -64,7 +80,10 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      await authApi.registerAdmin(admin);
+      await authApi.registerAdmin({
+        ...admin,
+        foto: adminFotoPath || undefined,
+      });
       setSuccess('Admin registered! Redirecting to login…');
       setTimeout(() => router.push('/login'), 2000);
     } catch (err: any) {
@@ -280,6 +299,33 @@ export default function RegisterPage() {
                       value={admin.deskripsi}
                       onChange={(e) => setAdmin({ ...admin, deskripsi: e.target.value })} />
                   </div>
+
+                  {/* Foto admin — opsional, bisa diubah nanti di halaman profile */}
+                  <div>
+                    <label className="label">Space / Profile Photo (optional)</label>
+                    <label
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px dashed rgba(255,255,255,0.15)',
+                      }}
+                      htmlFor="a-foto"
+                    >
+                      {adminFotoUploading ? (
+                        <LoadingSpinner size="sm" />
+                      ) : adminFotoPath ? (
+                        <CheckCircle size={16} style={{ color: '#4ade80' }} />
+                      ) : (
+                        <Upload size={16} style={{ color: '#7a6a5a' }} />
+                      )}
+                      <span className="text-sm" style={{ color: adminFotoPath ? '#4ade80' : '#7a6a5a' }}>
+                        {adminFotoPath ? 'Photo uploaded' : 'Upload space photo (optional)'}
+                      </span>
+                      <input id="a-foto" type="file" accept="image/*" className="sr-only"
+                        onChange={handleAdminFotoUpload} />
+                    </label>
+                  </div>
+
                   <div
                     className="h-px"
                     style={{ background: 'rgba(255,255,255,0.07)' }}

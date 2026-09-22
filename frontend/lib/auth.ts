@@ -2,27 +2,98 @@
 
 import { User, AuthUser } from '@/types';
 
+// ─── Cookie helpers ───────────────────────────────────────────────────────────
+
+/** Baca satu cookie by exact name. Return null kalau tidak ada. */
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  // Escape nama cookie untuk dipakai di regex
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(
+    new RegExp('(?:^|;\\s*)' + escapedName + '=([^;]*)')
+  );
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/** Set cookie dengan nilai yang di-encode. */
+function setCookie(name: string, value: string, maxAge: number) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+/** Hapus cookie. */
+function deleteCookie(name: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
+
+// ─── Auth storage ─────────────────────────────────────────────────────────────
+
+const SS_TOKEN = 'access_token';
+const SS_USER  = 'user';
+const CK_TOKEN = 'auth_token';
+const CK_ROLE  = 'auth_role';
+// auth_user TIDAK disimpan ke cookie — user object bisa > 4KB dan melebihi limit cookie.
+// Hanya token + role yang ke cookie (keduanya kecil).
+
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 hari
+
 export function setAuth(data: AuthUser) {
   if (typeof window === 'undefined') return;
-  // sessionStorage: isolasi per-tab, admin di tab A tidak menimpa member di tab B
-  sessionStorage.setItem('access_token', data.access_token);
-  sessionStorage.setItem('user', JSON.stringify(data.user));
+
+  // sessionStorage — per-tab, hilang saat tab ditutup (intentional untuk keamanan)
+  sessionStorage.setItem(SS_TOKEN, data.access_token);
+  sessionStorage.setItem(SS_USER,  JSON.stringify(data.user));
+
+  // Cookie — persist antar tab & restart browser, hanya data kecil
+  setCookie(CK_TOKEN, data.access_token, COOKIE_MAX_AGE);
+  setCookie(CK_ROLE,  data.user.role,    COOKIE_MAX_AGE);
 }
 
+/**
+ * Ambil token JWT.
+ * Priority: sessionStorage → cookie (fallback untuk tab baru)
+ */
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('access_token');
+  const ss = sessionStorage.getItem(SS_TOKEN);
+  if (ss) return ss;
+  // Tab baru: sessionStorage kosong tapi cookie ada
+  const ck = getCookie(CK_TOKEN);
+  if (ck) {
+    // Sinkronkan ke sessionStorage — hanya token, user diambil terpisah via getUser()
+    sessionStorage.setItem(SS_TOKEN, ck);
+    return ck;
+  }
+  return null;
 }
 
+/**
+ * Ambil data user.
+ * Priority: sessionStorage → null (user object tidak disimpan ke cookie)
+ *
+ * Jika sessionStorage kosong (tab baru), getUser() return null tapi
+ * isLoggedIn() tetap true karena token ada di cookie.
+ * getUser() akan terisi setelah API call pertama yang mengembalikan data user.
+ *
+ * Untuk keperluan role check, gunakan getRoleFromCookie() sebagai fallback.
+ */
 export function getUser(): User | null {
   if (typeof window === 'undefined') return null;
-  const u = sessionStorage.getItem('user');
-  if (!u) return null;
-  try {
-    return JSON.parse(u) as User;
-  } catch {
-    return null;
-  }
+  const ss = sessionStorage.getItem(SS_USER);
+  if (!ss) return null;
+  try { return JSON.parse(ss) as User; } catch { return null; }
+}
+
+/** Simpan user ke sessionStorage (dipanggil setelah API getProfile berhasil). */
+export function setUser(user: User) {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(SS_USER, JSON.stringify(user));
+}
+
+/** Baca role langsung dari cookie — lebih cepat dan tidak butuh parse JSON. */
+export function getRoleFromCookie(): string | null {
+  return getCookie(CK_ROLE);
 }
 
 export function isLoggedIn(): boolean {
@@ -30,116 +101,38 @@ export function isLoggedIn(): boolean {
 }
 
 export function isAdmin(): boolean {
+  // Coba dari sessionStorage user object
   const user = getUser();
-  return user?.role === 'ADMIN';
+  if (user) return user.role === 'ADMIN';
+  // Fallback: baca role cookie langsung (untuk tab baru)
+  return getRoleFromCookie() === 'ADMIN';
 }
 
 export function isMember(): boolean {
   const user = getUser();
-  return user?.role === 'MEMBER';
+  if (user) return user.role === 'MEMBER';
+  return getRoleFromCookie() === 'MEMBER';
 }
 
 export function logout() {
   if (typeof window === 'undefined') return;
-  sessionStorage.removeItem('access_token');
-  sessionStorage.removeItem('user');
+  sessionStorage.removeItem(SS_TOKEN);
+  sessionStorage.removeItem(SS_USER);
+  deleteCookie(CK_TOKEN);
+  deleteCookie(CK_ROLE);
   window.location.href = '/login';
 }
 
-export function formatCurrency(amount: number | string): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(num);
-}
-
-export function formatDate(dateStr: string): string {
-  if (!dateStr) return '-';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('id-ID', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-}
-
-export function formatTime(timeStr: string): string {
-  if (!timeStr) return '-';
-  // jam_mulai sekarang String "HH:MM" langsung dari backend
-  if (/^\d{1,2}:\d{2}$/.test(timeStr)) {
-    const [h, m] = timeStr.split(':');
-    return `${h.padStart(2, '0')}:${m}`;
-  }
-  // fallback: parse sebagai DateTime
-  const date = new Date(timeStr);
-  return date.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-}
-
-export function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    belum_dikonfirm: 'Belum Dikonfirmasi',
-    disetujui: 'Disetujui',
-    aktif: 'Aktif / Digunakan',
-    selesai: 'Selesai',
-    dibatalkan: 'Dibatalkan',
-  };
-  return labels[status] || status;
-}
-
-export function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    belum_dikonfirm: 'bg-yellow-100 text-yellow-800',
-    disetujui: 'bg-blue-100 text-blue-800',
-    aktif: 'bg-green-100 text-green-800',
-    selesai: 'bg-gray-100 text-gray-800',
-    dibatalkan: 'bg-red-100 text-red-800',
-  };
-  return colors[status] || 'bg-gray-100 text-gray-800';
-}
-
-export function getTipeSpaceLabel(tipe: string): string {
-  const labels: Record<string, string> = {
-    Personal_Desk: 'Personal Desk',
-    Private_Office: 'Private Office',
-    Meeting_Room: 'Meeting Room',
-  };
-  return labels[tipe] || tipe;
-}
-
-export function getErrorMessage(error: any): string {
-  if (error?.response?.data?.message) {
-    const msg = error.response.data.message;
-    if (Array.isArray(msg)) return msg.join(', ');
-    return msg;
-  }
-  return error?.message || 'Terjadi kesalahan';
-}
-
-/**
- * Resolve URL gambar dari field `foto` database.
- *
- * Dua kasus:
- * 1. Foto lama (lokal): "/uploads/spaces/abc.jpg"
- *    → prefix dengan NEXT_PUBLIC_API_URL  → http://localhost:3001/uploads/spaces/abc.jpg
- *
- * 2. Foto baru (Supabase Storage): "https://xxx.supabase.co/storage/v1/object/public/..."
- *    → sudah full URL, langsung return as-is
- *
- * Jika foto null/undefined → return null agar komponen tampilkan fallback.
- */
-export function getImageUrl(foto?: string | null): string | null {
-  if (!foto) return null;
-  // Sudah full URL (Supabase Storage atau eksternal)
-  if (foto.startsWith('http://') || foto.startsWith('https://')) {
-    return foto;
-  }
-  // Path relatif lokal — prefix dengan backend URL
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-  return `${base}${foto}`;
-}
+// ─── Re-export pure utils ─────────────────────────────────────────────────────
+// Server Components import langsung dari '@/lib/utils'.
+// Client Components boleh import dari sini untuk backward compat.
+export {
+  formatCurrency,
+  formatDate,
+  formatTime,
+  getStatusLabel,
+  getStatusColor,
+  getTipeSpaceLabel,
+  getErrorMessage,
+  getImageUrl,
+} from './utils';

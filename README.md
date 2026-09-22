@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/readme.png" alt="Maison Workspace Banner" width="100%" style="border-radius:12px;" />
+<img src="readme.png" alt="Maison Workspace Banner" width="100%" style="border-radius:12px;" />
 
 <br /><br />
 
@@ -270,7 +270,7 @@ cp .env.example .env
 Isi `.env`:
 
 ```env
-DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres"
+DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres"
 JWT_SECRET="ganti-dengan-secret-kuat"
 JWT_EXPIRES_IN="7d"
 PORT=3001

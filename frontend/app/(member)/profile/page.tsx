@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserCircle, Building2, Phone, MapPin } from 'lucide-react';
-import { authApi } from '@/lib/api';
-import { getUser, getErrorMessage } from '@/lib/auth';
+import { UserCircle, Building2, Phone, MapPin, Upload, CheckCircle } from 'lucide-react';
+import { authApi, uploadApi } from '@/lib/api';
+import { getUser, getErrorMessage, getImageUrl } from '@/lib/auth';
 import type { Member } from '@/types';
 import Alert from '@/components/ui/Alert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -13,38 +13,63 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 const CARD   = 'rgba(34,26,20,0.80)';
 const BORDER = 'rgba(255,255,255,0.08)';
 
-/** Resolve foto path ke full URL — handles Supabase https URLs + legacy /uploads/ paths */
-function resolveUrl(path: string | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith('http')) return path;            // Supabase public URL
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${path}`; // legacy local
-}
-
 export default function ProfilePage() {
-  const [member, setMember]   = useState<Member | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [member, setMember]           = useState<Member | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [uploading, setUploading]     = useState(false);
+  const [error, setError]             = useState('');
+  const [success, setSuccess]         = useState('');
+  const [fotoUrl, setFotoUrl]         = useState('');
   const user = getUser();
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await authApi.getProfile();
-        setMember(res.data.member as Member);
-      } catch (err: any) {
-        setError(getErrorMessage(err));
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    loadProfile();
   }, []);
+
+  async function loadProfile() {
+    try {
+      const res = await authApi.getProfile();
+      const m = res.data.member as Member;
+      setMember(m);
+      setFotoUrl(m?.foto || '');
+    } catch (err: any) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      // Upload ke Supabase Storage bucket 'members'
+      const uploadRes = await uploadApi.uploadMember(file);
+      const newUrl = uploadRes.data.url || uploadRes.data.path;
+
+      // Simpan URL ke profil via PATCH /api/auth/profile/foto
+      await authApi.updateFoto(newUrl);
+
+      setFotoUrl(newUrl);
+      setSuccess('Foto profil berhasil diperbarui');
+      // Refresh data profil
+      loadProfile();
+    } catch (err: any) {
+      setError(getErrorMessage(err));
+    } finally {
+      setUploading(false);
+      // Reset input agar file yang sama bisa dipilih lagi
+      e.target.value = '';
+    }
+  }
 
   if (loading) return (
     <div className="flex justify-center py-24"><LoadingSpinner size="lg" /></div>
   );
 
-  const avatarUrl = resolveUrl(member?.foto);
+  const avatarUrl = getImageUrl(fotoUrl);
   const initials  = (member?.nama_member || user?.username || 'U')
     .split(' ').slice(0, 2).map((w: string) => w[0]?.toUpperCase()).join('');
 
@@ -52,11 +77,8 @@ export default function ProfilePage() {
     <div className="max-w-2xl">
       <DashboardHeader subtitle="Your account information." />
 
-      {error && (
-        <div className="mb-5">
-          <Alert type="error" message={error} onClose={() => setError('')} />
-        </div>
-      )}
+      {error   && <div className="mb-5"><Alert type="error"   message={error}   onClose={() => setError('')}   /></div>}
+      {success && <div className="mb-5"><Alert type="success" message={success} onClose={() => setSuccess('')} /></div>}
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -65,9 +87,10 @@ export default function ProfilePage() {
         className="rounded-2xl overflow-hidden"
         style={{ background: CARD, border: `1px solid ${BORDER}` }}
       >
-        {/* ── Avatar ── */}
+        {/* ── Avatar + upload ── */}
         <div className="px-6 py-6 flex items-center gap-5" style={{ borderBottom: `1px solid ${BORDER}` }}>
-          <div className="flex-shrink-0">
+          {/* Avatar dengan tombol upload overlay */}
+          <div className="relative flex-shrink-0">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -76,7 +99,6 @@ export default function ProfilePage() {
                 className="w-20 h-20 rounded-2xl object-cover"
                 style={{ border: '2px solid rgba(201,167,122,0.30)' }}
                 onError={(e) => {
-                  // Fallback jika URL gambar broken
                   (e.currentTarget as HTMLImageElement).style.display = 'none';
                 }}
               />
@@ -92,6 +114,27 @@ export default function ProfilePage() {
                 {initials}
               </div>
             )}
+
+            {/* Upload overlay button */}
+            <label
+              htmlFor="member-foto"
+              className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer"
+              style={{ background: '#c9a77a', border: '2px solid #170f0c' }}
+              title="Ganti foto profil"
+            >
+              {uploading
+                ? <LoadingSpinner size="sm" />
+                : <Upload size={12} style={{ color: '#1a1008' }} />
+              }
+              <input
+                id="member-foto"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleFotoUpload}
+                disabled={uploading}
+              />
+            </label>
           </div>
 
           <div className="min-w-0">
@@ -114,6 +157,15 @@ export default function ProfilePage() {
             >
               Member
             </span>
+            {fotoUrl && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <CheckCircle size={11} style={{ color: '#4ade80' }} />
+                <span className="text-xs" style={{ color: '#4ade80' }}>Photo set</span>
+              </div>
+            )}
+            <p className="text-xs mt-1" style={{ color: '#7a6a5a' }}>
+              Click the camera icon to change photo
+            </p>
           </div>
         </div>
 
@@ -142,7 +194,7 @@ export default function ProfilePage() {
         {/* ── Note ── */}
         <div className="px-6 py-4" style={{ borderTop: `1px solid ${BORDER}` }}>
           <p className="text-xs" style={{ color: '#7a6a5a' }}>
-            To update your profile information, please contact your coworking space administrator.
+            To update other profile information (name, institution, address), please contact your coworking space administrator.
           </p>
         </div>
       </motion.div>

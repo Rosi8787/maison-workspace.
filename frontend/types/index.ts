@@ -28,6 +28,7 @@ export interface SpaceOwner {
   telp: string;
   alamat: string;
   deskripsi?: string;
+  foto?: string;
   id_user: number;
 }
 

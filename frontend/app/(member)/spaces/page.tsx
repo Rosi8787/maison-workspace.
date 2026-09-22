@@ -9,6 +9,7 @@ import {
 import { spacesApi } from '@/lib/api';
 import { formatCurrency, getTipeSpaceLabel, getErrorMessage, getImageUrl } from '@/lib/auth';
 import { TIME_OPTIONS, DURATION_OPTIONS } from '@/lib/mock-data';
+import { cachedFetch, getCache, invalidateCache } from '@/lib/cache';
 import type { Space, TipeSpace } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -24,10 +25,14 @@ const TYPE_FILTERS: { label: string; value: TipeSpace | '' }[] = [
 export default function SpacesPage() {
   const today = new Date().toISOString().split('T')[0];
 
-  const [spaces, setSpaces]           = useState<Space[]>([]);
-  const [filtered, setFiltered]       = useState<Space[]>([]);
+  const CACHE_KEY = 'spaces-all';
+
+  // Baca cache synchronous sebagai initial state — tidak ada loading jika cache ada
+  const cached = getCache<Space[]>(CACHE_KEY, 60);
+  const [spaces, setSpaces]           = useState<Space[]>(cached ?? []);
+  const [filtered, setFiltered]       = useState<Space[]>(cached ?? []);
   const [filterTipe, setFilterTipe]   = useState<TipeSpace | ''>('');
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading]         = useState(!cached); // tidak loading jika ada cache
   const [error, setError]             = useState('');
   const [availabilityMode, setAvMode] = useState(false);
 
@@ -43,11 +48,13 @@ export default function SpacesPage() {
   }, [filterTipe, spaces]);
 
   async function loadSpaces() {
-    setLoading(true);
+    // Jika ada cache, set loading false agar tidak tampil spinner
+    // Tetap fetch baru di background untuk update data
+    if (!getCache(CACHE_KEY, 60)) setLoading(true);
     try {
-      const res = await spacesApi.getAll();
-      setSpaces(res.data);
-      setFiltered(res.data);
+      const data = await cachedFetch<Space[]>(CACHE_KEY, () => spacesApi.getAll(), 60);
+      setSpaces(data);
+      setFiltered(filterTipe ? data.filter((s) => s.tipe === filterTipe) : data);
     } catch (e: any) {
       setError(getErrorMessage(e));
     } finally {

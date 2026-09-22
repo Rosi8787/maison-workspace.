@@ -1,4 +1,4 @@
-import { getStatusLabel } from '@/lib/auth';
+import { getStatusLabel } from '@/lib/utils';
 
 const STATUS_STYLES: Record<string, { bg: string; border: string; color: string }> = {
   belum_dikonfirm: {

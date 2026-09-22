@@ -21,6 +21,10 @@ export class RegisterAdminDto {
   @IsString()
   deskripsi?: string;
 
+  @IsOptional()
+  @IsString()
+  foto?: string;
+
   @IsNotEmpty()
   @IsString()
   username: string;

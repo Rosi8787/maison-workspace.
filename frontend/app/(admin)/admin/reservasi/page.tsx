@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Filter, X, LogIn, LogOut } from 'lucide-react';
+import { Filter, X, LogIn, LogOut, QrCode } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { Reservasi } from '@/types';
 import { formatCurrency, formatDate, formatTime, getErrorMessage } from '@/lib/auth';
@@ -10,6 +10,7 @@ import Alert from '@/components/ui/Alert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import StatusBadge from '@/components/ui/StatusBadge';
 import Modal from '@/components/ui/Modal';
+import QrScannerModal from '@/components/admin/QrScannerModal';
 
 const STATUS_OPTIONS = [
   { value: '',                label: 'All Status' },
@@ -33,6 +34,7 @@ export default function AdminReservasiPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [statusModal, setStatusModal] = useState<{ id: number; currentStatus: string } | null>(null);
   const [newStatus, setNewStatus]     = useState('');
+  const [qrScanOpen, setQrScanOpen]   = useState(false);
 
   useEffect(() => { loadReservasi(); }, [statusFilter, bulanFilter]); // eslint-disable-line
 
@@ -72,8 +74,20 @@ export default function AdminReservasiPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight" style={{ color: '#f4eee7', letterSpacing: '-0.02em' }}>Reservations</h1>
-        <p className="text-sm mt-1" style={{ color: '#7a6a5a' }}>Manage and track all workspace bookings</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight" style={{ color: '#f4eee7', letterSpacing: '-0.02em' }}>Reservations</h1>
+            <p className="text-sm mt-1" style={{ color: '#7a6a5a' }}>Manage and track all workspace bookings</p>
+          </div>
+          {/* Tombol Scan QR */}
+          <button
+            onClick={() => setQrScanOpen(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <QrCode size={15} />
+            Scan QR Check-In
+          </button>
+        </div>
       </div>
 
       {error   && <div className="mb-5"><Alert type="error"   message={error}   onClose={() => setError('')}   /></div>}
@@ -204,6 +218,17 @@ export default function AdminReservasiPage() {
           </select>
         </div>
       </Modal>
+
+      {/* QR Scanner Modal */}
+      <QrScannerModal
+        isOpen={qrScanOpen}
+        onClose={() => setQrScanOpen(false)}
+        onSuccess={(msg) => {
+          setSuccess(msg);
+          setQrScanOpen(false);
+          loadReservasi(); // refresh list setelah check-in via QR
+        }}
+      />
     </div>
   );
 }

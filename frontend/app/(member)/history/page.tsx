@@ -7,6 +7,7 @@ import { History, Ticket, ArrowRight } from 'lucide-react';
 import { reservasiApi } from '@/lib/api';
 import { Reservasi } from '@/types';
 import { formatCurrency, formatDate, formatTime, getErrorMessage } from '@/lib/auth';
+import { cachedFetch, getCache } from '@/lib/cache';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Alert from '@/components/ui/Alert';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -17,18 +18,22 @@ const BORDER = 'rgba(255,255,255,0.08)';
 
 export default function HistoryPage() {
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const [reservasi, setReservasi] = useState<Reservasi[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [bulan, setBulan] = useState(currentMonth);
+
+  const cacheKey = `history-${bulan}`;
+  const cached   = getCache<Reservasi[]>(cacheKey, 30);
+  const [reservasi, setReservasi] = useState<Reservasi[]>(cached ?? []);
+  const [loading, setLoading]   = useState(!cached);
   const [error, setError]       = useState('');
-  const [bulan, setBulan]       = useState(currentMonth);
 
   useEffect(() => { loadHistory(bulan); }, [bulan]); // eslint-disable-line
 
   async function loadHistory(month: string) {
-    setLoading(true);
+    const key = `history-${month}`;
+    if (!getCache(key, 30)) setLoading(true);
     try {
-      const res = await reservasiApi.getMyHistory(month);
-      setReservasi(res.data);
+      const data = await cachedFetch<Reservasi[]>(key, () => reservasiApi.getMyHistory(month), 30);
+      setReservasi(data);
     } catch (err: any) { setError(getErrorMessage(err)); }
     finally { setLoading(false); }
   }

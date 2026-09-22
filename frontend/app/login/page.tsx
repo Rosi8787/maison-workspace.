@@ -23,12 +23,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
       const res = await authApi.login({ username, password });
       setAuth(res.data);
-      const role = res.data.user.role;
-      router.push(role === 'ADMIN' ? '/admin/dashboard' : '/spaces');
+      router.replace(res.data.user.role === 'ADMIN' ? '/admin/dashboard' : '/spaces');
     } catch (err: any) {
       setError(getErrorMessage(err));
     } finally {

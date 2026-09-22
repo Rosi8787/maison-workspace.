@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Users, CalendarCheck, Clock, TrendingUp, Building2, Tag, BarChart3, UserCircle } from 'lucide-react';
 import { adminApi } from '@/lib/api';
 import { formatCurrency, getErrorMessage } from '@/lib/auth';
+import { cachedFetch, getCache } from '@/lib/cache';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const BG = '#120d0b';
@@ -13,8 +14,10 @@ const CARD = 'rgba(34,26,20,0.80)';
 const BORDER = 'rgba(255,255,255,0.08)';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const CACHE_KEY = 'admin-dashboard';
+  const cachedStats = getCache<any>(CACHE_KEY, 30);
+  const [stats, setStats] = useState<any>(cachedStats ?? null);
+  const [loading, setLoading] = useState(!cachedStats);
 
   const now = new Date();
   const currentMonth = String(now.getMonth() + 1);
@@ -22,18 +25,26 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
+      // Jika ada cache → tidak perlu loading, fetch di background
+      const hasCache = !!getCache(CACHE_KEY, 30);
+      if (!hasCache) setLoading(true);
       try {
         const [reportRes, reservasiRes, memberRes] = await Promise.all([
           adminApi.getMonthlyReport(currentMonth, currentYear),
           adminApi.getReservasi(),
           adminApi.getMembers(),
         ]);
-        setStats({
+        const newStats = {
           report:         reportRes.data,
           totalReservasi: reservasiRes.data.length,
           totalMember:    memberRes.data.length,
           pending:        reservasiRes.data.filter((r: any) => r.status === 'belum_dikonfirm').length,
-        });
+        };
+        // Simpan ke cache manual (karena ini kombinasi 3 API)
+        try {
+          sessionStorage.setItem(`cache_${CACHE_KEY}`, JSON.stringify({ data: newStats, timestamp: Date.now() }));
+        } catch { /* ok */ }
+        setStats(newStats);
       } catch {
         // degrade gracefully
       } finally {
@@ -44,7 +55,9 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) {
+  // Jika loading DAN tidak ada stats sama sekali → tampilkan loading
+  // Jika ada stats (dari cache) → langsung render, update di background
+  if (loading && !stats) {
     return (
       <div className="flex justify-center py-20">
         <LoadingSpinner size="lg" />

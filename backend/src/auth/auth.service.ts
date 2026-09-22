@@ -81,6 +81,7 @@ export class AuthService {
             telp: dto.telp,
             alamat: dto.alamat,
             deskripsi: dto.deskripsi || null,
+            foto: dto.foto || null,
           },
         },
       },
@@ -150,5 +151,28 @@ export class AuthService {
 
     const { password, ...result } = user;
     return result;
+  }
+
+  /** Update foto profil — berlaku untuk member maupun admin */
+  async updateFoto(userId: number, fotoUrl: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { role: true, member: { select: { id: true } }, space_owner: { select: { id: true } } },
+    });
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    if (user.role === 'MEMBER' && user.member) {
+      await this.prisma.member.update({
+        where: { id: user.member.id },
+        data: { foto: fotoUrl },
+      });
+    } else if (user.role === 'ADMIN' && user.space_owner) {
+      await this.prisma.space_owner.update({
+        where: { id: user.space_owner.id },
+        data: { foto: fotoUrl },
+      });
+    }
+
+    return this.getProfile(userId);
   }
 }

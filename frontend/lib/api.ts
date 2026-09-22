@@ -12,21 +12,27 @@ const api = axios.create({
 // Attach token untuk setiap request
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = sessionStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Coba sessionStorage dulu
+    let token = sessionStorage.getItem('access_token');
+    // Fallback ke cookie jika tab baru / sessionStorage kosong
+    if (!token) {
+      const match = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
+      if (match) token = decodeURIComponent(match[1]);
     }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Handle 401 — redirect ke login
+// Handle 401 — clear semua auth data dan redirect ke login
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       sessionStorage.removeItem('access_token');
       sessionStorage.removeItem('user');
+      document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
+      document.cookie = 'auth_role=; path=/; max-age=0; SameSite=Lax';
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -43,6 +49,7 @@ export const authApi = {
   registerAdmin: (data: any) => api.post('/auth/register/admin-space', data),
   login: (data: any) => api.post('/auth/login', data),
   getProfile: () => api.get('/auth/profile'),
+  updateFoto: (foto: string) => api.patch('/auth/profile/foto', { foto }),
 };
 
 // ==========================================

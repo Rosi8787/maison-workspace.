@@ -10,34 +10,30 @@ import Footer from '@/components/landing/Footer';
 
 export default function HomePage() {
   const router = useRouter();
-  const [checked, setChecked] = useState(false);
+  /**
+   * `show`: true = tampilkan landing page.
+   *
+   * Kalau user sudah login → router.replace langsung, TIDAK tampilkan landing.
+   * Kalau belum login → set show=true → render landing.
+   *
+   * Tidak ada spinner — background gelap sesaat lebih baik dari flash landing
+   * yang langsung hilang.
+   */
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (isLoggedIn()) {
       const user = getUser();
-      if (user?.role === 'ADMIN') {
-        router.replace('/admin/dashboard');
-      } else {
-        router.replace('/spaces');
-      }
+      router.replace(user?.role === 'ADMIN' ? '/admin/dashboard' : '/spaces');
+      // Tidak set show=true, biarkan blank background sampai redirect
     } else {
-      setChecked(true);
+      setShow(true);
     }
-  }, [router]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // While checking auth, render nothing (avoids flash)
-  if (!checked) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ background: '#120d0b' }}
-      >
-        <div
-          className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: 'rgba(201,167,122,0.5)', borderTopColor: 'transparent' }}
-        />
-      </div>
-    );
+  if (!show) {
+    // Background hitam sesaat — tidak ada spinner (spinner sendiri butuh paint)
+    return <div className="min-h-screen" style={{ background: '#120d0b' }} />;
   }
 
   return (

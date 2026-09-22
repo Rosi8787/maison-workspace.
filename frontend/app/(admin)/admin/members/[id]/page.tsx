@@ -6,18 +6,12 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Upload, CheckCircle, UserCircle } from 'lucide-react';
 import { adminApi, uploadApi } from '@/lib/api';
-import { getErrorMessage } from '@/lib/auth';
+import { getErrorMessage, getImageUrl } from '@/lib/auth';
 import Alert from '@/components/ui/Alert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 const CARD   = 'rgba(34,26,20,0.80)';
 const BORDER = 'rgba(255,255,255,0.08)';
-
-function resolveUrl(path: string | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith('http')) return path;
-  return `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}${path}`;
-}
 
 export default function AdminMemberEditPage() {
   const { id }    = useParams();
@@ -95,7 +89,7 @@ export default function AdminMemberEditPage() {
     <div className="flex justify-center py-20"><LoadingSpinner size="lg" /></div>
   );
 
-  const avatarUrl = resolveUrl(form.foto);
+  const avatarUrl = getImageUrl(form.foto);
   const initials  = (form.nama_member || 'M').split(' ').slice(0, 2).map((w: string) => w[0]?.toUpperCase()).join('');
 
   return (
